@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>论文解读 | Uncertainty-Aware Adaptive Recommendation</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-light: #4f46e5;
+      --primary-dark: #3730a3;
+      --accent: #0891b2;
+      --accent2: #059669;
+      --accent3: #d97706;
+      --accent4: #dc2626;
+      --bg: #f8fafc;
+      --bg2: #f1f5f9;
+      --bg3: #e2e8f0;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ===== HEADER ===== */
+    .hero {
+      background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f0f9ff 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 60px 24px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 40%, rgba(79,70,229,0.08) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 60%, rgba(6,182,212,0.06) 0%, transparent 50%);
+      animation: pulse 8s ease-in-out infinite alternate;
+    }
+    @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+    .hero-badge {
+      display: inline-block;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 4px 14px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .hero h1 {
+      font-size: clamp(22px, 4vw, 36px);
+      font-weight: 800;
+      line-height: 1.3;
+      max-width: 820px;
+      margin: 0 auto 16px;
+      position: relative;
+      background: linear-gradient(90deg, #1e293b 0%, #4f46e5 50%, #0891b2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 15px;
+      color: var(--text-muted);
+      position: relative;
+    }
+    .hero-meta {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+      position: relative;
+    }
+    .meta-chip {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .meta-chip span { color: var(--text); font-weight: 600; }
+
+    /* ===== LAYOUT ===== */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 36px;
+    }
+
+    /* ===== SECTION ===== */
+    .section {
+      padding: 56px 0 0;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 28px;
+    }
+    .section-title .icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+    }
+    .card-grid {
+      display: grid;
+      gap: 20px;
+    }
+    .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+    /* ===== ABSTRACT BOX ===== */
+    .abstract-box {
+      background: linear-gradient(135deg, rgba(79,70,229,0.05), rgba(6,182,212,0.03));
+      border: 1px solid rgba(79,70,229,0.2);
+      border-radius: 16px;
+      padding: 28px 32px;
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.9;
+      position: relative;
+    }
+    .abstract-box::before {
+      content: '"';
+      font-size: 80px;
+      line-height: 1;
+      color: rgba(79,70,229,0.12);
+      position: absolute;
+      top: 8px;
+      left: 16px;
+      font-family: Georgia, serif;
+    }
+    .abstract-box p { padding-left: 12px; }
+
+    /* ===== INSIGHT BOX ===== */
+    .insight-box {
+      background: linear-gradient(135deg, rgba(79,70,229,0.06), rgba(6,182,212,0.04));
+      border: 1px solid rgba(79,70,229,0.25);
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .insight-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .insight-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .insight-text {
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+    .insight-highlight {
+      color: #b45309;
+      font-weight: 700;
+    }
+
+    /* ===== CONTRIBUTION CARDS ===== */
+    .contrib-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .contrib-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+    }
+    .contrib-header {
+      padding: 20px 24px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .contrib-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .contrib-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .contrib-subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+    .contrib-body {
+      padding: 0 24px 24px;
+      border-top: 1px solid var(--border);
+      margin-top: 0;
+    }
+    .contrib-body p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 16px;
+      line-height: 1.8;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .tag {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    /* contrib colors */
+    .c1 .contrib-num { background: rgba(79,70,229,0.2); color: var(--primary-light); }
+    .c1 .contrib-header { border-bottom: 2px solid rgba(79,70,229,0.3); }
+    .c1 .tag { background: rgba(79,70,229,0.15); color: var(--primary-light); }
+
+    .c2 .contrib-num { background: rgba(16,185,129,0.2); color: #34d399; }
+    .c2 .contrib-header { border-bottom: 2px solid rgba(16,185,129,0.3); }
+    .c2 .tag { background: rgba(16,185,129,0.15); color: #34d399; }
+
+    .c3 .contrib-num { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .c3 .contrib-header { border-bottom: 2px solid rgba(245,158,11,0.3); }
+    .c3 .tag { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+    .c4 .contrib-num { background: rgba(6,182,212,0.2); color: #22d3ee; }
+    .c4 .contrib-header { border-bottom: 2px solid rgba(6,182,212,0.3); }
+    .c4 .tag { background: rgba(6,182,212,0.15); color: #22d3ee; }
+
+    /* ===== METHOD FLOW ===== */
+    .method-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-step {
+      display: flex;
+      gap: 20px;
+      position: relative;
+    }
+    .flow-step:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 44px;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--border), transparent);
+    }
+    .flow-dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+      background: var(--card);
+      z-index: 1;
+    }
+    .flow-content {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+    .flow-content h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .flow-content p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .formula-box {
+      background: rgba(14,116,144,0.06);
+      border: 1px solid rgba(14,116,144,0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #0e7490;
+    }
+
+    /* ===== DUAL STRATEGY ===== */
+    .dual-strategy {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 640px) {
+      .dual-strategy { grid-template-columns: 1fr; }
+    }
+    .strategy-card {
+      border-radius: 16px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .strategy-lau {
+      background: linear-gradient(135deg, rgba(5,150,105,0.06), rgba(5,150,105,0.02));
+      border: 1px solid rgba(5,150,105,0.25);
+    }
+    .strategy-hau {
+      background: linear-gradient(135deg, rgba(217,119,6,0.06), rgba(217,119,6,0.02));
+      border: 1px solid rgba(217,119,6,0.25);
+    }
+    .strategy-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      padding: 3px 10px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-bottom: 16px;
+    }
+    .strategy-lau .strategy-label { background: rgba(5,150,105,0.12); color: #059669; }
+    .strategy-hau .strategy-label { background: rgba(217,119,6,0.12); color: #d97706; }
+    .strategy-card h3 {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+    .strategy-lau h3 { color: #059669; }
+    .strategy-hau h3 { color: #d97706; }
+    .strategy-card .def {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 8px;
+    }
+    .strategy-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      line-height: 1.8;
+    }
+    .result-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .strategy-lau .result-item { background: rgba(5,150,105,0.07); }
+    .strategy-hau .result-item { background: rgba(217,119,6,0.07); }
+    .result-label { color: var(--text-muted); }
+    .result-val { font-weight: 800; }
+    .strategy-lau .result-val { color: #059669; }
+    .strategy-hau .result-val { color: #d97706; }
+
+    /* ===== TABLE ===== */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      background: #f1f5f9;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-align: left;
+      padding: 12px 16px;
+    }
+    td {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      color: var(--text);
+    }
+    tr:hover td { background: rgba(79,70,229,0.03); }
+    .best { color: #059669; font-weight: 800; }
+    .highlight-row td { background: rgba(79,70,229,0.05); }
+    .row-tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(79,70,229,0.12);
+      color: var(--primary);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* ===== LIMITATION CARD ===== */
+    .limit-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .limit-item {
+      display: flex;
+      gap: 14px;
+      padding: 16px 20px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      align-items: flex-start;
+    }
+    .limit-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .limit-item h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .limit-item p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ===== FUTURE WORK ===== */
+    .future-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .future-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      text-align: center;
+    }
+    .future-item .emoji { font-size: 28px; margin-bottom: 10px; }
+    .future-item h4 { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .future-item p { font-size: 12px; color: var(--text-dim); }
+
+    /* ===== CONCLUSION ===== */
+    .conclusion-box {
+      background: linear-gradient(135deg, rgba(79,70,229,0.05), rgba(6,182,212,0.03));
+      border: 1px solid rgba(79,70,229,0.2);
+      border-radius: 16px;
+      padding: 36px;
+      text-align: center;
+      margin: 48px 0;
+    }
+    .conclusion-box h2 {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .conclusion-box p {
+      font-size: 15px;
+      color: var(--text-muted);
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.9;
+    }
+    .conclusion-box .highlight { color: #4f46e5; font-weight: 700; }
+    .conclusion-box .highlight2 { color: #059669; font-weight: 700; }
+    .conclusion-box .highlight3 { color: #d97706; font-weight: 700; }
+
+    /* ===== DIVIDER ===== */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 8px 0;
+    }
+
+    /* ===== NAV ===== */
+    .toc {
+      position: sticky;
+      top: 16px;
+    }
+
+    /* ===== CHART BAR ===== */
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bar-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      width: 180px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+    .bar-track {
+      flex: 1;
+      height: 22px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding-left: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      transition: width 1s ease;
+    }
+    .bar-best { background: linear-gradient(90deg, #4f46e5, #818cf8); }
+    .bar-good { background: linear-gradient(90deg, #0891b2, #22d3ee); }
+    .bar-ok { background: linear-gradient(90deg, #b45309, #f59e0b); }
+    .bar-weak { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
+    .bar-rand { background: linear-gradient(90deg, #cbd5e1, #e2e8f0); }
+
+    .footer {
+      text-align: center;
+      padding: 40px 24px;
+      color: var(--text-dim);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+      margin-top: 48px;
+    }
+    .footer a { color: var(--primary-light); text-decoration: none; }
+
+    /* ===== SYMBOL TABLE ===== */
+    .sym-table {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 14px 0;
+    }
+    .sym-row {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .sym-row:last-child { border-bottom: none; }
+    .sym-key {
+      background: #f1f5f9;
+      padding: 10px 16px;
+      font-family: 'Courier New', monospace;
+      color: #4f46e5;
+      font-size: 12.5px;
+      width: 220px;
+      flex-shrink: 0;
+    }
+    .sym-val {
+      padding: 10px 16px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ===== DERIV DETAILS (折叠) ===== */
+    .deriv-details {
+      margin: 16px 0;
+    }
+    .deriv-summary {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+      cursor: pointer;
+      padding: 10px 16px;
+      background: rgba(79,70,229,0.06);
+      border: 1px solid rgba(79,70,229,0.2);
+      border-radius: 8px;
+      list-style: none;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .deriv-summary:hover { background: rgba(79,70,229,0.1); }
+    .deriv-details[open] .deriv-summary { border-radius: 8px 8px 0 0; }
+    .deriv-proof {
+      background: rgba(79,70,229,0.02);
+      border: 1px solid rgba(79,70,229,0.15);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 20px 22px;
+    }
+
+    /* ===== PROOF BLOCK ===== */
+    .proof-block {
+      font-family: 'Courier New', monospace;
+      font-size: 13.5px;
+    }
+    .proof-line {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin: 6px 0;
+      flex-wrap: wrap;
+    }
+    .proof-lhs {
+      width: 72px;
+      text-align: right;
+      color: #4f46e5;
+      flex-shrink: 0;
+    }
+    .proof-eq {
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+    .proof-rhs {
+      color: var(--text-muted);
+      line-height: 1.9;
+    }
+    /* colored parts */
+    .pc { font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+    .pc.noise { color: #059669; background: rgba(5,150,105,0.1); }
+    .pc.bias  { color: #dc2626; background: rgba(220,38,38,0.1); }
+    .pc.var   { color: #4f46e5; background: rgba(79,70,229,0.1); }
+
+    .proof-annotation {
+      font-family: 'PingFang SC', sans-serif;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin: 8px 0 8px 82px;
+      line-height: 1.8;
+      border-left: 2px solid var(--border);
+      padding-left: 12px;
+    }
+    .ann-item {
+      display: inline-block;
+      margin-right: 12px;
+      padding: 1px 8px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.04);
+    }
+    .ann-item.noise { color: #059669; }
+    .ann-item.var   { color: #4f46e5; }
+
+    .proof-result {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-top: 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      font-family: 'PingFang SC', sans-serif;
+    }
+    .pr-item {
+      flex: 1;
+      padding: 14px 16px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+    .pr-item small { display: block; font-weight: 400; font-size: 11px; margin-top: 4px; }
+    .pr-item.noise { background: rgba(5,150,105,0.07); color: #059669; }
+    .pr-item.bias  { background: rgba(220,38,38,0.07); color: #dc2626; }
+    .pr-item.var   { background: rgba(79,70,229,0.07); color: #4f46e5; }
+    .pr-plus {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      color: var(--text-dim);
+      font-size: 18px;
+      background: rgba(0,0,0,0.02);
+    }
+
+    /* ===== A vs B COMPARE ===== */
+    .ab-compare {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 14px 0;
+    }
+    .ab-col { flex: 1; display: flex; flex-direction: column; }
+    .ab-vs {
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 12px;
+      font-size: 13px; font-weight: 800; color: var(--text-dim);
+      background: rgba(0,0,0,0.02);
+      flex-shrink: 0;
+    }
+    .ab-a { background: rgba(79,70,229,0.04); }
+    .ab-b { background: rgba(6,182,212,0.04); }
+    .ab-head {
+      font-size: 13px; font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 1px solid;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ab-badge {
+      padding: 2px 8px; border-radius: 6px;
+      font-size: 11px; font-weight: 800;
+    }
+    .ab-row {
+      display: flex; gap: 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12.5px;
+    }
+    .ab-row:last-child { border-bottom: none; }
+    .ab-key {
+      padding: 8px 12px;
+      color: var(--text-dim);
+      background: rgba(0,0,0,0.02);
+      width: 120px; flex-shrink: 0;
+      border-right: 1px solid var(--border);
+    }
+    .ab-val {
+      padding: 8px 12px;
+      color: var(--text-muted);
+    }
+
+    /* ===== SIDEBAR TOC ===== */
+    .toc-sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 220px;
+      height: 100vh;
+      overflow-y: auto;
+      background: #ffffff;
+      border-right: 1px solid var(--border);
+      padding: 24px 14px 40px;
+      z-index: 100;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .toc-sidebar::-webkit-scrollbar { width: 4px; }
+    .toc-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .toc-title {
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.10em; color: var(--text-dim);
+      margin-bottom: 14px; padding-left: 8px;
+    }
+    .toc-list { list-style: none; display: flex; flex-direction: column; gap: 1px; }
+    .toc-item a {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text-dim); text-decoration: none;
+      font-size: 12px; padding: 5px 8px; border-radius: 6px;
+      line-height: 1.4;
+      transition: background 0.15s, color 0.15s;
+    }
+    .toc-item a:hover { background: rgba(79,70,229,0.06); color: var(--text); }
+    .toc-item a.toc-active { background: rgba(79,70,229,0.1); color: #4f46e5; }
+    .toc-badge {
+      font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 8px;
+      flex-shrink: 0; white-space: nowrap;
+    }
+    .toc-sub { padding-left: 14px; margin-top: 1px; }
+    .toc-sub .toc-item a { font-size: 11.5px; }
+    .toc-sub .toc-sub .toc-item a { font-size: 11px; color: #94a3b8; padding: 3px 8px; }
+    .toc-sep { height: 1px; background: var(--border); margin: 8px 8px; }
+
+    /* main area offset for sidebar */
+    .hero { padding-left: calc(220px + 24px); }
+    .container { margin-left: 220px; }
+
+    @media (max-width: 900px) {
+      .toc-sidebar { display: none; }
+      .hero { padding-left: 24px; }
+      .container { margin-left: 0; }
+    }
+
+    /* ===== TYPE-I vs TYPE-II MLE COMPARE ===== */
+    .mle-compare {
+      display: flex;
+      gap: 0;
+      align-items: stretch;
+      margin: 16px 0;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .mle-card {
+      flex: 1;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .mle-card.mle-bad  { background: rgba(239,68,68,0.04); border-right: 1px solid var(--border); }
+    .mle-card.mle-good { background: rgba(6,182,212,0.04); }
+    .mle-label {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+    .mle-bad  .mle-label { background: rgba(220,38,38,0.1); color: #dc2626; }
+    .mle-good .mle-label { background: rgba(8,145,178,0.1); color: #0891b2; }
+    .mle-target {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    .mle-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    .mle-footer {
+      margin-top: auto;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .mle-footer.bad  { background: rgba(220,38,38,0.07);  color: #dc2626; }
+    .mle-footer.good { background: rgba(8,145,178,0.07);  color: #0891b2; }
+    .mle-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      font-size: 24px;
+      color: var(--text-dim);
+      background: rgba(0,0,0,0.02);
+      flex-shrink: 0;
+    }
+    /* Levels row */
+    .mle-levels {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 12px 0 4px;
+    }
+    .mle-level-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12.5px;
+    }
+    .mle-lvl-badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .mle-lvl-badge.good { background: rgba(8,145,178,0.1); color: #0891b2; }
+    .mle-lvl-badge.dim  { background: rgba(0,0,0,0.05); color: var(--text-dim); }
+    .mle-lvl-desc { color: var(--text-dim); line-height: 1.5; }
+
+    /* ===== CONTRIB BLOCK (纵向深度展开) ===== */
+    .contrib-block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 4px solid;
+      border-radius: 16px;
+      margin-bottom: 32px;
+      overflow: hidden;
+    }
+    .cb-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 24px 28px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .cb-num {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .cb-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .cb-en {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 3px;
+    }
+    .cb-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-left: auto;
+      align-self: center;
+    }
+    .cb-body {
+      padding: 28px;
+    }
+    .cb-lead {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.85;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    /* ===== DERIVATION SECTION ===== */
+    .deriv-section {
+      margin-bottom: 28px;
+    }
+    .deriv-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 12px;
+      letter-spacing: 0.02em;
+    }
+    .deriv-text {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.85;
+      margin-bottom: 12px;
+    }
+
+    /* ===== MATH BLOCKS ===== */
+    .math-block {
+      background: #f8f9ff;
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-family: 'Courier New', 'Consolas', monospace;
+      font-size: 13.5px;
+      color: #3730a3;
+      line-height: 2;
+      margin: 12px 0;
+    }
+    .math-block.math-highlight {
+      border-color: rgba(99,102,241,0.4);
+      background: rgba(79,70,229,0.05);
+      color: #3730a3;
+      font-size: 14px;
+    }
+    .math-block-wide {
+      background: #f8f9ff;
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 10px;
+      padding: 18px 24px;
+      margin: 12px 0;
+    }
+    .math-line {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    .math-main {
+      font-size: 14px;
+      color: #3730a3;
+      line-height: 2;
+      margin: 10px 0;
+    }
+    .math-labels {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .math-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+    .math-term { font-weight: 700; }
+    .math-term.bias { color: #dc2626; }
+    .math-term.var  { color: #4f46e5; }
+    .math-term.noise{ color: #059669; }
+    .math-lbl.bias  { background:rgba(220,38,38,0.1); color:#dc2626; }
+    .math-lbl.var   { background:rgba(79,70,229,0.1); color:#4f46e5; }
+    .math-lbl.noise { background:rgba(5,150,105,0.1); color:#059669; }
+
+    /* ===== DERIV BOX ===== */
+    .deriv-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .deriv-row {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid var(--border);
+    }
+    .deriv-row:last-child { border-bottom: none; }
+    .deriv-label {
+      background: var(--bg3);
+      padding: 14px 18px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      width: 130px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .deriv-arrow {
+      padding: 14px 10px;
+      color: var(--text-dim);
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+    }
+    .deriv-formula {
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    /* ===== STEP LIST ===== */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .step-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .step-num {
+      background: rgba(79,70,229,0.1);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-content {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.8;
+      flex: 1;
+    }
+    .note {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* ===== COMPARE GRID ===== */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .compare-item {
+      border-radius: 10px;
+      padding: 16px 18px;
+      border: 1px solid;
+    }
+    .compare-item.bad  { background:rgba(220,38,38,0.04); border-color:rgba(220,38,38,0.15); }
+    .compare-item.good { background:rgba(5,150,105,0.04); border-color:rgba(5,150,105,0.2); }
+    .compare-method {
+      font-size: 13px;
+      font-weight: 800;
+      color: #dc2626;
+      margin-bottom: 8px;
+    }
+    .compare-item.good .compare-method { color: #059669; }
+    .compare-desc { font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
+
+    /* ===== INTUITION BOX ===== */
+    .intuition-box {
+      border: 1px solid;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .intuition-row {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    .intuition-row:last-child { border-bottom: none; }
+    .intuition-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ===== RESULT TABLE ===== */
+    .result-table { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); margin:12px 0; }
+    .rt-row { display: grid; grid-template-columns: 1.5fr 3fr 1fr; border-bottom: 1px solid var(--border); }
+    .rt-row:last-child { border-bottom: none; }
+    .rt-header { background: #f1f5f9; }
+    .rt-cell { padding: 11px 14px; font-size: 13px; color: var(--text-muted); display: flex; align-items: center; }
+    .rt-header .rt-cell { font-size: 11px; font-weight: 700; color: var(--text-dim); letter-spacing: 0.05em; }
+    .good-val { color: #059669; font-weight: 800; }
+
+    /* scroll reveal */
+    .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s, transform 0.6s; }
+    .revealed { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR TOC -->
+<nav class="toc-sidebar">
+  <div class="toc-title">📋 目录</div>
+  <ul class="toc-list">
+    <li class="toc-item"><a href="#sec-abstract"><span class="toc-badge" style="background:rgba(79,70,229,0.1);color:#4f46e5">摘要</span>论文概览</a></li>
+    <li class="toc-item"><a href="#sec-insight"><span class="toc-badge" style="background:rgba(217,119,6,0.1);color:#d97706">洞察</span>核心对偶思想</a></li>
+    <div class="toc-sep"></div>
+    <li class="toc-item"><a href="#sec-contrib"><span class="toc-badge" style="background:rgba(8,145,178,0.1);color:#0891b2">贡献</span>两大技术贡献</a>
+      <ul class="toc-list toc-sub">
+        <li class="toc-item"><a href="#sec-contrib1">① 不确定性量化框架</a>
+          <ul class="toc-list toc-sub">
+            <li class="toc-item"><a href="#sec-1a">①-A EPE Critic</a></li>
+            <li class="toc-item"><a href="#sec-1b">①-B Empirical Bayes</a></li>
+          </ul>
+        </li>
+        <li class="toc-item"><a href="#sec-contrib2">② LAU/HAU 对偶框架</a>
+          <ul class="toc-list toc-sub">
+            <li class="toc-item"><a href="#sec-2a">②-A LAU Deboosting</a></li>
+            <li class="toc-item"><a href="#sec-2b">②-B HAU UCB 探索</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <div class="toc-sep"></div>
+    <li class="toc-item"><a href="#sec-validation"><span class="toc-badge" style="background:rgba(8,145,178,0.1);color:#0891b2">验证</span>工业验证与消融</a></li>
+    <li class="toc-item"><a href="#sec-compare"><span class="toc-badge" style="background:rgba(5,150,105,0.1);color:#059669">对比</span>方法全面对比</a></li>
+    <li class="toc-item"><a href="#sec-limits"><span class="toc-badge" style="background:rgba(220,38,38,0.1);color:#dc2626">局限</span>局限与展望</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">KDD 2026 · ACM SIGKDD · cs.IR</div>
+  <h1>Uncertainty-Aware Adaptive Recommendation<br/>across User Lifecycle</h1>
+  <div class="hero-sub">用户全生命周期的不确定性感知自适应推荐</div>
+  <div class="hero-meta">
+    <div class="meta-chip">作者：<span>Bob Junyi Zou (Stanford) · 字节跳动团队</span></div>
+    <div class="meta-chip">平台：<span>抖音直播 (大规模线上验证)</span></div>
+    <div class="meta-chip">发表：<span>KDD '26, Jeju Island</span></div>
+    <div class="meta-chip">arXiv：<span>2605.17788v2</span></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ABSTRACT -->
+  <div id="sec-abstract" class="section reveal">
+    <div class="section-title">
+      <div class="icon" style="background:rgba(79,70,229,0.15)">📝</div>
+      摘要
+    </div>
+    <div class="abstract-box">
+      <p>
+        推荐系统的核心挑战在于如何<strong style="color:#4f46e5">为低活跃用户（LAU）提供可靠推荐</strong>的同时，
+        <strong style="color:#0891b2">为高活跃用户（HAU）提供多样化内容</strong>。
+        本文的核心钥匙是<strong style="color:#d97706">模型不确定性量化</strong>——它既能预警低质量推荐、阻止低活用户流失，
+        又能识别内容探索机会、为高活用户拓宽兴趣边界。
+        框架在字节跳动直播平台大规模部署，低活用户留存（HLT7）和观看质量（VWR）显著提升，
+        高活用户内容多样性和品类覆盖率大幅增加。
+      </p>
+    </div>
+  </div>
+
+  <!-- CORE INSIGHT -->
+  <div id="sec-insight" class="section reveal">
+    <div class="section-title">
+      <div class="icon" style="background:rgba(251,191,36,0.15)">💡</div>
+      核心洞察（最大创新点）
+    </div>
+    <div class="insight-box">
+      <div class="insight-icon">🔀</div>
+      <div>
+        <div class="insight-title">同一个"不确定性信号"，截然相反的两种用法</div>
+        <div class="insight-text">
+          传统方法把不确定性一律视为"坏事"需要消除。本文的关键洞察是：
+          <span class="insight-highlight">对 LAU，高不确定性 = 风险（应该压制）；对 HAU，高不确定性 = 探索机会（应该利用）。</span>
+          这一对偶视角让同一套不确定性量化框架驱动出截然相反的策略，是整篇论文最核心的思想贡献。
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box" style="background:linear-gradient(135deg,rgba(79,70,229,0.04),rgba(8,145,178,0.04));border-color:rgba(79,70,229,0.18);margin-top:16px">
+      <div class="insight-icon">⚙️</div>
+      <div>
+        <div class="insight-title" style="color:#0891b2">洞察得以落地的技术保障：统一不确定性量化框架</div>
+        <div class="insight-text">
+          大多数工业级推荐模型只输出一个标量预测值 <em>f<sub>Θ</sub>(x)</em>，对自身预测的可靠性毫无感知。本文为两类主流模型分别设计了不确定性量化方法，统一成一套<strong style="color:#4f46e5">低延迟、可落地的框架</strong>：
+          <br/>• <strong>方法 A（EPE Critic）</strong>：针对确定性点估计模型，输出 U<sub>point</sub>(x)
+          <br/>• <strong>方法 B（Empirical Bayes）</strong>：针对概率性模型，输出 U<sub>prob</sub>(x)
+          <br/>两者共同驱动贡献二中的 LAU/HAU 策略——是对偶洞察从思想走向工程的关键一步。
+        </div>
+      </div>
+    </div>
+
+    <!-- DUAL STRATEGY -->
+    <div class="dual-strategy">
+      <div class="strategy-card strategy-lau">
+        <div class="strategy-label">LOW-ACTIVE USERS · LAU</div>
+        <h3>🛡️ 风险规避：Deboosting</h3>
+        <div class="def">定义：月活跃观看天数 &lt; 7 天</div>
+        <p>交互历史稀疏，模型对这类用户预测最不可靠。一旦推错内容，用户极易<strong style="color:#059669">永久流失（churn）</strong>。</p>
+        <p>高不确定性内容 → <strong style="color:#059669">降分（deboost）</strong> → 过滤掉高风险推荐</p>
+        <div class="formula-box">r_final = r - D · I_risky(u, i)</div>
+      </div>
+      <div class="strategy-card strategy-hau">
+        <div class="strategy-label">HIGH-ACTIVE USERS · HAU</div>
+        <h3>🚀 兴趣探索：UCB Boost</h3>
+        <div class="def">定义：月活跃观看天数 ≥ 7 天</div>
+        <p>数据丰富，但系统容易把用户"锁定"在已知偏好里，导致<strong style="color:#d97706">兴趣越来越窄（Filter Bubble）</strong>。</p>
+        <p>高不确定性内容 → <strong style="color:#d97706">加分（UCB boost）</strong> → 优先探索潜在兴趣</p>
+        <div class="formula-box">r_final = r + ω · U_HAU(u, i)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TWO CONTRIBUTIONS -->
+  <div id="sec-contrib" class="section reveal">
+    <div class="section-title">
+      <div class="icon" style="background:rgba(6,182,212,0.15)">🏆</div>
+      两大技术贡献详解
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         贡献一：统一不确定性量化框架（含方法A/B）
+    ══════════════════════════════════════════ -->
+    <div id="sec-contrib1" class="contrib-block" style="border-left-color:#4f46e5">
+      <div class="cb-header">
+        <div class="cb-num" style="background:rgba(79,70,229,0.1);color:#4f46e5">①</div>
+        <div>
+          <div class="cb-title">统一不确定性量化框架</div>
+          <div class="cb-en">Production-Ready Unified Uncertainty Quantification Framework</div>
+        </div>
+        <div class="cb-tags">
+          <span class="tag" style="background:rgba(79,70,229,0.1);color:#4f46e5">EPE Critic</span>
+          <span class="tag" style="background:rgba(79,70,229,0.1);color:#4f46e5">Empirical Bayes</span>
+          <span class="tag" style="background:rgba(79,70,229,0.1);color:#4f46e5">低推理延迟</span>
+        </div>
+      </div>
+      <div class="cb-body">
+        <p class="cb-lead">如何让工业级推荐系统"知道自己有多不确定"？本框架的答案是：分情况讨论。针对<strong>确定性模型</strong>（只输出标量）用 EPE Critic 间接度量；针对<strong>概率性模型</strong>（输出分布参数）用 Empirical Bayes 直接提取——两条路都在单次推理内完成，无额外延迟。</p>
+        <div class="deriv-section">
+          <div class="deriv-title">▍不确定性的形式定义</div>
+          <p class="deriv-text">对每个 (user, context) 输入 <em>x ∈ 𝒳</em>，令 <em>f<sub>Θ</sub>(x)</em> 为推荐模型预测值，Θ 为每日训练后的参数随机变量。不确定性来源于两类：</p>
+          <div class="deriv-box">
+            <div class="deriv-row">
+              <div class="deriv-label">认知不确定性<br/><span style="color:#64748b;font-size:11px">Epistemic</span></div>
+              <div class="deriv-arrow">→</div>
+              <div class="deriv-formula">模型容量不足 / 训练数据稀疏 / 在线 serving 特征漂移 → 可随数据增加而减少</div>
+            </div>
+            <div class="deriv-row">
+              <div class="deriv-label">随机不确定性<br/><span style="color:#64748b;font-size:11px">Aleatoric</span></div>
+              <div class="deriv-arrow">→</div>
+              <div class="deriv-formula">用户行为本身的内在随机性 𝕍(Y | X=x) → 不可减少，即使模型完美</div>
+            </div>
+          </div>
+          <p class="deriv-text" style="margin-top:12px">本文聚焦于<strong style="color:#4f46e5">认知不确定性</strong>——直接反映模型对当前 (user, item) 交互模式的掌握程度。下方方法 A / 方法 B 分别量化这一信号，最终输出 U<sub>point</sub>(x) 和 U<sub>prob</sub>(x) 供贡献二调用。</p>
+        </div>
+
+        <!-- 方法 A vs B 对比 -->
+        <div class="deriv-section">
+          <div class="deriv-title">▍方法 A vs 方法 B：适用场景与原理对比</div>
+          <div class="ab-compare">
+            <div class="ab-col ab-a">
+              <div class="ab-head" style="color:#4f46e5;border-bottom-color:rgba(165,180,252,0.3)">
+                <span class="ab-badge" style="background:rgba(79,70,229,0.1);color:#4f46e5">①-A</span>
+                EPE Critic 网络
+              </div>
+              <div class="ab-row"><span class="ab-key">适用模型</span><span class="ab-val">确定性点估计模型（CTR、时长回归）</span></div>
+              <div class="ab-row"><span class="ab-key">不确定性来源</span><span class="ab-val">历史泛化误差（跨 checkpoint 波动）</span></div>
+              <div class="ab-row"><span class="ab-key">训练方式</span><span class="ab-val">辅助 Critic 网络，MSE 回归，冻结主模型</span></div>
+              <div class="ab-row"><span class="ab-key">推理代价</span><span class="ab-val">单次前向，无额外延迟</span></div>
+              <div class="ab-row"><span class="ab-key">优势场景</span><span class="ab-val">即时风险规避（VWR 提升更显著）</span></div>
+              <div class="ab-row"><span class="ab-key">输出信号</span><span class="ab-val">U<sub>point</sub>(x) = g<sub>φ</sub>(z<sub>Θ</sub>(x))</span></div>
+            </div>
+            <div class="ab-vs">VS</div>
+            <div class="ab-col ab-b">
+              <div class="ab-head" style="color:#0891b2;border-bottom-color:rgba(103,232,249,0.3)">
+                <span class="ab-badge" style="background:rgba(8,145,178,0.12);color:#0891b2">①-B</span>
+                Empirical Bayes 先验头
+              </div>
+              <div class="ab-row"><span class="ab-key">适用模型</span><span class="ab-val">概率性输出模型（带分布参数输出）</span></div>
+              <div class="ab-row"><span class="ab-key">不确定性来源</span><span class="ab-val">参数先验分布的方差（Type-II MLE）</span></div>
+              <div class="ab-row"><span class="ab-key">训练方式</span><span class="ab-val">最大化边缘似然，学习超参 γ，θ 保留分布</span></div>
+              <div class="ab-row"><span class="ab-key">推理代价</span><span class="ab-val">单次前向，Beta 方差解析计算</span></div>
+              <div class="ab-row"><span class="ab-key">优势场景</span><span class="ab-val">兴趣探索稳定性（Show Tag/U 更优）</span></div>
+              <div class="ab-row"><span class="ab-key">输出信号</span><span class="ab-val">U<sub>prob</sub>(x) = αβ / [(α+β)²(α+β+1)]</span></div>
+            </div>
+          </div>
+          <p class="deriv-text" style="margin-top:12px"><span class="note">两者正交互补：EPE 捕获 serving 系统偏差，Bayes 捕获参数分布方差。联合使用在 HLT7（+0.0577%）和 Show Tag/U（+2.1%）上均超过任一单独使用。</span></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 方法 A：EPE Critic ══ -->
+    <div id="sec-1a" class="contrib-block" style="border-left-color:#4f46e5;margin-left:24px">
+      <div class="cb-header">
+        <div class="cb-num" style="background:rgba(79,70,229,0.1);color:#4f46e5;font-size:13px">①-A</div>
+        <div>
+          <div class="cb-title">方法 A：EPE Critic 网络</div>
+          <div class="cb-en">Expected Prediction Error Critic — for Deterministic Point-Estimate Models</div>
+        </div>
+        <div class="cb-tags">
+          <span class="tag" style="background:rgba(79,70,229,0.1);color:#4f46e5">CTR 预测器</span>
+          <span class="tag" style="background:rgba(79,70,229,0.1);color:#4f46e5">Decoupled Training</span>
+          <span class="tag" style="background:rgba(79,70,229,0.1);color:#4f46e5">Monte Carlo 近似</span>
+        </div>
+      </div>
+      <div class="cb-body">
+        <p class="cb-lead">对于只输出点估计 <em>f<sub>Θ</sub>(x)</em> 的模型（如 CTR 预测器、观看时长回归器），模型本身没有任何不确定性输出。本方法训练一个辅助 Critic 网络，让它学会"预测主模型会犯多大的错"。</p>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#4f46e5">▍EPE 定义与偏差-方差-噪声分解</div>
+          <p class="deriv-text">定义<strong>输入特定的期望预测误差</strong>：</p>
+          <div class="math-block">EPE(x) = 𝔼<sub>Θ</sub> 𝔼<sub>Y|X=x</sub> [ ℓ(Y, f<sub>Θ</sub>(x)) ]</div>
+          <p class="deriv-text">取平方损失，EPE 可做经典<strong style="color:#4f46e5">偏差-方差-噪声分解</strong>：</p>
+          <div class="sym-table">
+            <div class="sym-row">
+              <div class="sym-key">f<sub>Θ</sub>(x)</div>
+              <div class="sym-val">某次<strong>具体训练</strong>（参数 Θ）的预测值；Θ 随训练集采样/初始化等随机因素变化</div>
+            </div>
+            <div class="sym-row">
+              <div class="sym-key">f̄(x) = 𝔼<sub>Θ</sub>[f<sub>Θ</sub>(x)]</div>
+              <div class="sym-val">所有训练随机性的期望预测均值（理论量）；f<sub>Θ</sub> 围绕 f̄ 的波动幅度 = <strong style="color:#4f46e5">方差 = 认知不确定性</strong></div>
+            </div>
+            <div class="sym-row">
+              <div class="sym-key">μ(x) = 𝔼[Y|X=x]</div>
+              <div class="sym-val">真实条件均值（未知）；f̄ 与 μ 的系统性偏移 = <strong style="color:#dc2626">偏差²</strong></div>
+            </div>
+          </div>
+          <details class="deriv-details">
+            <summary class="deriv-summary">▶ 展开完整推导</summary>
+            <div class="deriv-proof">
+              <p class="deriv-text" style="margin-bottom:10px">一次性加减 f̄(x) 和 μ(x)，把 (Y − f<sub>Θ</sub>(x)) 拆成三段，展开后三个交叉项均为 0：</p>
+              <div class="proof-block">
+                <div class="proof-line">
+                  <span class="proof-lhs">EPE(x)</span><span class="proof-eq">=</span>
+                  <span class="proof-rhs">𝔼<sub>Θ</sub> 𝔼<sub>Y|x</sub> [ (Y − f<sub>Θ</sub>(x))² ]</span>
+                </div>
+                <div class="proof-line">
+                  <span class="proof-lhs"></span><span class="proof-eq">=</span>
+                  <span class="proof-rhs">𝔼<sub>Θ</sub> 𝔼<sub>Y|x</sub> [ <span class="pc noise">(Y−μ(x))</span> + <span class="pc bias">(μ(x)−f̄(x))</span> + <span class="pc var">(f̄(x)−f<sub>Θ</sub>(x))</span> ]²</span>
+                </div>
+                <div class="proof-annotation">
+                  三个交叉项消去：<span class="ann-item noise">① 𝔼<sub>Y|x</sub>[Y−μ(x)]=0</span>（零均值噪声）&emsp;
+                  <span class="ann-item var">② 𝔼<sub>Θ</sub>[f̄(x)−f<sub>Θ</sub>(x)]=0</span>（f̄ 是 f<sub>Θ</sub> 的期望）&emsp;
+                  <span class="ann-item">③ 两常数项与随机项协方差=0</span>
+                </div>
+                <div class="proof-line">
+                  <span class="proof-lhs"></span><span class="proof-eq">=</span>
+                  <span class="proof-rhs"><span class="pc noise">𝕍(Y|X=x)</span> &nbsp;+&nbsp; <span class="pc bias">(μ(x)−f̄(x))²</span> &nbsp;+&nbsp; <span class="pc var">𝔼<sub>Θ</sub>[(f<sub>Θ</sub>(x)−f̄(x))²]</span></span>
+                </div>
+                <div class="proof-result">
+                  <span class="pr-item noise">数据噪声 ε²<br/><small>𝕍(Y|X=x) · 不可消除</small></span>
+                  <span class="pr-plus">+</span>
+                  <span class="pr-item bias">偏差² Bias²<br/><small>(f̄−μ)² · 换更强模型可减</small></span>
+                  <span class="pr-plus">+</span>
+                  <span class="pr-item var">方差 Variance<br/><small>𝔼<sub>Θ</sub>[(f<sub>Θ</sub>−f̄)²] · 认知不确定性</small></span>
+                </div>
+              </div>
+              <p class="deriv-text" style="margin-top:12px"><span class="note">为什么 EPE 可代理认知不确定性：论文只在同一用户群（LAU）内部比较 EPE，此时 ε² 近似相同，EPE 差异主要反映 Variance 差异，即认知不确定性高低。</span></p>
+            </div>
+          </details>
+          <div class="math-block-wide">
+            <div class="math-line math-main">
+              EPE(x) = <span class="math-term bias">(f̄(x)−μ(x))²</span> + <span class="math-term var">𝔼<sub>Θ</sub>[(f<sub>Θ</sub>(x)−f̄(x))²]</span> + <span class="math-term noise">𝕍(Y|X=x)</span>
+            </div>
+            <div class="math-labels">
+              <span class="math-lbl bias">模型偏差²</span>
+              <span class="math-lbl var">模型方差（认知不确定性）</span>
+              <span class="math-lbl noise">数据噪声（随机不确定性）</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#4f46e5">▍Critic 网络的训练 </div>
+          <p class="deriv-text">直接计算 EPE 需对 Θ 采样，代价极高。转而训练辅助 Critic 网络 g<sub>φ</sub> 直接预测 EPE(x)：</p>
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num">Step 1</div>
+              <div class="step-content">
+                <strong>构建监督信号</strong>：每日 checkpoint Θ<sup>(1)</sup>,...,Θ<sup>(K)</sup>。用前一天参数评估当天样本，计算实际泛化误差：
+                <div class="math-block">e<sub>j</sub><sup>(k)</sup> = ℓ(y<sub>j</sub><sup>(k)</sup>, f<sub>Θ<sup>(k−1)</sup></sub>(x<sub>j</sub><sup>(k)</sup>))</div>
+                <span class="note">用 k−1 的参数评估第 k 天样本，避免信息泄漏，构成 EPE 的 Monte Carlo 近似。</span>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">Step 2</div>
+              <div class="step-content">
+                <strong>多视角输入表示</strong>：拼接原始特征 + 主模型中间 embedding + 主模型输出：
+                <div class="math-block">z<sub>Θ</sub>(x) = [ x ‖ h<sub>Θ</sub>(x) ‖ f<sub>Θ</sub>(x) ]</div>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">Step 3</div>
+              <div class="step-content">
+                <strong>解耦训练</strong>：训练 Critic 时<strong style="color:#4f46e5">冻结主模型</strong>，防止反馈回路。目标：MSE 回归
+                <div class="math-block">min<sub>φ</sub> 𝔼[ (g<sub>φ</sub>(z<sub>Θ</sub>(x)) − e)² ]　→　U<sub>point</sub>(x) ≡ g<sub>φ</sub>(z<sub>Θ</sub>(x))</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 方法 B：Empirical Bayes ══ -->
+    <div id="sec-1b" class="contrib-block" style="border-left-color:#0891b2;margin-left:24px">
+      <div class="cb-header">
+        <div class="cb-num" style="background:rgba(8,145,178,0.1);color:#0891b2;font-size:13px">①-B</div>
+        <div>
+          <div class="cb-title">方法 B：Empirical Bayes 先验头</div>
+          <div class="cb-en">Type-II Maximum Likelihood — for Probabilistic Output Models</div>
+        </div>
+        <div class="cb-tags">
+          <span class="tag" style="background:rgba(8,145,178,0.1);color:#0891b2">Beta 先验</span>
+          <span class="tag" style="background:rgba(8,145,178,0.1);color:#0891b2">全变差分解</span>
+          <span class="tag" style="background:rgba(8,145,178,0.1);color:#0891b2">单次推理</span>
+        </div>
+      </div>
+      <div class="cb-body">
+        <p class="cb-lead">对于输出分布参数的概率性模型，本方法通过 <strong style="color:#0891b2">Type-II 最大似然（Empirical Bayes）</strong> 训练，使模型天然保留对参数 θ 的不确定性。</p>
+
+        <!-- 本文具体做法 -->
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#0891b2">▍神经网络输出输入自适应先验</div>
+          <p class="deriv-text">令神经网络（参数 Θ）为每个输入 x 输出先验超参 γ<sub>Θ</sub>(x)，先验为：</p>
+          <div class="math-block">θ | x  ∼  p(θ | γ<sub>Θ</sub>(x))</div>
+          <p class="deriv-text">边缘预测分布通过积分消去 θ：</p>
+          <div class="math-block">p(y | x) = ∫ p(y | θ) · p(θ | γ<sub>Θ</sub>(x)) dθ</div>
+          <p class="deriv-text">训练目标（Type-II MLE）：</p>
+          <div class="math-block math-highlight">Θ* = argmax<sub>Θ</sub> &nbsp; Σ<sub>i</sub> log ∫ p(y<sub>i</sub> | θ) · p(θ | γ<sub>Θ</sub>(x<sub>i</sub>)) dθ</div>
+          <p class="deriv-text"><span class="note">注：γ 不是手动设定的固定先验，而是由神经网络从数据中"学"出来（Empirical = 经验性）。每个 (user, item) 对有自己独特的先验，故称"输入自适应先验"。</span></p>
+        </div>
+
+        <!-- Type-I vs Type-II 对比（可折叠） -->
+        <details class="deriv-details" style="margin:0 0 16px">
+          <summary class="deriv-summary" style="color:#0891b2;background:rgba(8,145,178,0.07);border-color:rgba(8,145,178,0.2)">▶ Type-I MLE vs Type-II MLE：为什么 Type-II 能保留不确定性？</summary>
+          <div class="deriv-proof" style="border-color:rgba(8,145,178,0.15)">
+            <p class="deriv-text" style="margin-bottom:12px">两种方法对潜在参数 θ 的处理方式截然不同，这决定了能否保留不确定性：</p>
+            <div class="mle-compare">
+              <div class="mle-card mle-bad">
+                <div class="mle-label">Type-I MLE（普通最大似然）</div>
+                <div class="mle-target">优化目标：直接最大化观测数据的似然</div>
+                <div class="math-block" style="margin:10px 0">θ* = argmax<sub>θ</sub> &nbsp; p(y | θ)</div>
+                <div class="mle-desc">直接学习 θ 的<strong>点估计</strong> θ*，训练完成后 θ 被固定为一个确定值。<br/>不确定性<span style="color:#dc2626;font-weight:700">完全丢失</span>——无法知道模型对这个预测"有多没把握"。</div>
+                <div class="mle-footer bad">❌ 输出：单个点 θ*，不确定性归零</div>
+              </div>
+              <div class="mle-arrow">→</div>
+              <div class="mle-card mle-good">
+                <div class="mle-label">Type-II MLE（Empirical Bayes）</div>
+                <div class="mle-target">优化目标：最大化边缘似然（积分掉 θ）</div>
+                <div class="math-block" style="margin:10px 0">γ* = argmax<sub>γ</sub> &nbsp; ∫ p(y | θ) · p(θ | γ) dθ</div>
+                <div class="mle-desc">不学习 θ 的点估计，而是学习<strong>先验超参 γ</strong>——让先验分布去"解释数据"。θ 始终是随机变量，其分布 p(θ|γ) 的<span style="color:#0891b2;font-weight:700">方差就是认知不确定性</span>。</div>
+                <div class="mle-footer good">✅ 输出：先验分布 p(θ|γ)，不确定性被保留</div>
+              </div>
+            </div>
+            <div class="mle-levels" style="margin-top:12px">
+              <div class="mle-level-item"><span class="mle-lvl-badge dim">完全贝叶斯</span><span class="mle-lvl-desc">对 γ 也设先验，三层推断 → 理论最完整，计算不可行</span></div>
+              <div class="mle-level-item"><span class="mle-lvl-badge good">Empirical Bayes（本文）</span><span class="mle-lvl-desc">用数据估计 γ，两层结构 → 保留不确定性，可微可训练</span></div>
+              <div class="mle-level-item"><span class="mle-lvl-badge dim">普通 MLE</span><span class="mle-lvl-desc">直接学 θ 点估计，一层 → 最简单，不确定性全失</span></div>
+            </div>
+          </div>
+        </details>
+
+        <!-- 全变差分解 -->
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#0891b2">▍全变差公式：提取认知不确定性</div>
+          <p class="deriv-text">由于 θ 保有分布（而非点估计），预测方差可通过<strong>全变差公式（Law of Total Variance）</strong>在单次推理中解析分解：</p>
+          <div class="math-block-wide">
+            <div class="math-line math-main">
+              Var(Y|X=x) = <span class="math-term noise">𝔼<sub>θ|x</sub>[Var(Y|θ)]</span> + <span class="math-term var">Var<sub>θ|x</sub>(𝔼[Y|θ])</span>
+            </div>
+            <div class="math-labels">
+              <span class="math-lbl noise">随机不确定性 Aleatoric（用户行为内在随机性，不可消除）</span>
+              <span class="math-lbl var">认知不确定性 Epistemic ← 本文取此项</span>
+            </div>
+          </div>
+          <p class="deriv-text" style="margin-top:8px">只取认知项作为不确定性信号：<strong>U<sub>prob</sub>(x) = Var<sub>θ|x</sub>(𝔼[Y|θ])</strong></p>
+        </div>
+
+        <!-- Beta-Bernoulli 具体实现 -->
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#0891b2">▍具体实现：Beta-Bernoulli 共轭，解析解</div>
+          <p class="deriv-text">以 CTR 建模为例（Bernoulli 似然 + Beta 先验共轭对），模型输出两个 logit，经 softplus 参数化：</p>
+          <div class="math-block">
+            α(x) = 1 + softplus(u(x)),&nbsp;&nbsp; β(x) = 1 + softplus(v(x))<br/>
+            θ | x &nbsp;∼&nbsp; Beta(α(x), β(x))
+          </div>
+          <p class="deriv-text">Beta 先验方差（即认知不确定性）有<strong style="color:#0891b2">解析解</strong>，单次推理直接计算：</p>
+          <div class="math-block math-highlight">
+            U<sub>prob</sub>(x) &nbsp;=&nbsp; Var<sub>θ|x</sub>(𝔼[Y|θ]) &nbsp;=&nbsp;
+            <span style="display:inline-block;text-align:center;vertical-align:middle">
+              <span style="display:block;padding-bottom:2px">α(x) · β(x)</span>
+              <span style="display:block;border-top:1px solid #67e8f9;padding-top:2px">(α(x)+β(x))² · (α(x)+β(x)+1)</span>
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         贡献二：LAU/HAU 对偶用法框架
+    ══════════════════════════════════════════ -->
+    <div id="sec-contrib2" class="contrib-block" style="border-left-color:#d97706">
+      <div class="cb-header">
+        <div class="cb-num" style="background:rgba(217,119,6,0.12);color:#d97706">②</div>
+        <div>
+          <div class="cb-title">LAU / HAU 不确定性对偶用法框架</div>
+          <div class="cb-en">Dual Usage: Risk-Averse Deboosting (LAU) &amp; UCB Exploration (HAU)</div>
+        </div>
+        <div class="cb-tags">
+          <span class="tag" style="background:rgba(5,150,105,0.1);color:#059669">LAU → 风险过滤</span>
+          <span class="tag" style="background:rgba(217,119,6,0.1);color:#d97706">HAU → 探索驱动</span>
+          <span class="tag" style="background:rgba(217,119,6,0.1);color:#d97706">同一信号·相反策略</span>
+        </div>
+      </div>
+      <div class="cb-body">
+        <p class="cb-lead">贡献一产生的不确定性信号 U<sub>point</sub> / U<sub>prob</sub> 对不同用户群体有截然相反的含义：对低活跃用户（LAU）是<strong style="color:#059669">风险信号</strong>（→ 降分过滤），对高活跃用户（HAU）是<strong style="color:#d97706">探索机会</strong>（→ UCB 加分）。这种对偶视角是整篇论文最核心的思想贡献。</p>
+      </div>
+    </div>
+
+    <!-- ══ ②-A：LAU Deboosting ══ -->
+    <div id="sec-2a" class="contrib-block" style="border-left-color:#059669;margin-left:24px">
+      <div class="cb-header">
+        <div class="cb-num" style="background:rgba(5,150,105,0.1);color:#059669;font-size:13px">②-A</div>
+        <div>
+          <div class="cb-title">低活跃用户（LAU）：风险规避 Deboosting</div>
+          <div class="cb-en">Risk-Averse Deboosting for Low-Active Users</div>
+        </div>
+        <div class="cb-tags">
+          <span class="tag" style="background:rgba(5,150,105,0.1);color:#059669">HLT7 +0.057%</span>
+          <span class="tag" style="background:rgba(5,150,105,0.1);color:#059669">VWR +0.512%</span>
+          <span class="tag" style="background:rgba(5,150,105,0.1);color:#059669">不确定性 = 风险</span>
+        </div>
+      </div>
+      <div class="cb-body">
+        <p class="cb-lead">低活跃用户（LAU）定义为月活跃观看天数 &lt; 7 天。其交互历史极度稀疏，模型预测可靠性最低——一旦推荐失当极易永久流失（churn）。本策略将贡献一的不确定性信号用作<strong style="color:#059669">风险过滤器</strong>，主动压制高不确定性推荐。</p>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#059669">▍Step 1：经验阈值校准（无参数假设）</div>
+          <p class="deriv-text">在独立 hold-out 校准集 𝒟<sub>cal</sub> 上，对每个样本计算两类不确定性分值，取第 q 分位数（默认 q = 0.95）作为置信阈值：</p>
+          <div class="math-block">
+            τ<sub>point</sub> = Quantile<sub>q</sub>({U<sub>point</sub>(x<sub>j</sub>) : (x<sub>j</sub>, y<sub>j</sub>) ∈ 𝒟<sub>cal</sub>})<br/>
+            τ<sub>prob</sub>  = Quantile<sub>q</sub>({U<sub>prob</sub>(x<sub>j</sub>)  : (x<sub>j</sub>, y<sub>j</sub>) ∈ 𝒟<sub>cal</sub>})
+          </div>
+          <p class="deriv-text"><span class="note">关键优势：无需对不确定性分布做任何参数假设，直接从真实数据分布中提取阈值，对 distribution shift 天然鲁棒。</span></p>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#059669">▍Step 2：风险判定（保守的 OR 逻辑）</div>
+          <p class="deriv-text">对 LAU 的每个候选 item，同时评估两类不确定性，只要任意一类超阈值即认定为"高风险"推荐：</p>
+          <div class="math-block math-highlight">
+            𝕀<sub>risky</sub>(u, i) = 𝕀[ U<sub>point</sub>(x<sub>u,i</sub>) &gt; τ<sub>point</sub>  OR  U<sub>prob</sub>(x<sub>u,i</sub>) &gt; τ<sub>prob</sub> ]
+          </div>
+          <p class="deriv-text">选用 OR 而非 AND 的原因：两种不确定性来源不同（EPE 捕获历史泛化误差，Bayes 捕获参数分布方差），互补而非冗余，保守地取并集可最大化召回高风险样本。</p>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#059669">▍Step 3：降分与排序</div>
+          <p class="deriv-text">对高风险 item 施加固定幅度的降分，并对最终分值重新排序：</p>
+          <div class="math-block math-highlight">
+            r<sup>final</sup><sub>u,i</sub> = r<sub>u,i</sub> − D · 𝕀<sub>risky</sub>(u, i)<br/><br/>
+            Rank<sub>final</sub>(u) = argsort({ r<sup>final</sup><sub>u,i</sub> : i ∈ ℐ(u) })
+          </div>
+          <p class="deriv-text">超参数 D（降分幅度）和 (τ<sub>point</sub>, τ<sub>prob</sub>) 通过线上 A/B 实验联合调优。</p>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#059669">▍直觉解释：为什么 Deboosting 能提升留存？</div>
+          <div class="intuition-box" style="border-color:rgba(16,185,129,0.3)">
+            <div class="intuition-row">
+              <div class="intuition-icon">📉</div>
+              <div>传统系统：高置信度预测 ≠ 高质量推荐（模型校准差）→ 对 LAU 推高风险内容 → 用户不满 → 流失</div>
+            </div>
+            <div class="intuition-row">
+              <div class="intuition-icon">✅</div>
+              <div>本文策略：在高不确定性样本上主动"退让"，宁可少推，也要推可靠的 → 降低 LAU 第一批次体验中的负样本率 → 用户留存</div>
+            </div>
+            <div class="intuition-row">
+              <div class="intuition-icon">🔬</div>
+              <div>验证：Live Watch Time 轻微下降（−0.16%）但 HLT7 显著提升，HLT-efficiency = 0.0549，说明用"少量观看时间"换取了"高质量留存"，是系统性优化而非简单截断。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ②-B：HAU UCB Exploration ══ -->
+    <div id="sec-2b" class="contrib-block" style="border-left-color:#d97706;margin-left:24px">
+      <div class="cb-header">
+        <div class="cb-num" style="background:rgba(217,119,6,0.1);color:#d97706;font-size:13px">②-B</div>
+        <div>
+          <div class="cb-title">高活跃用户（HAU）：不确定性驱动 UCB 探索</div>
+          <div class="cb-en">Uncertainty-Driven UCB Exploration for High-Active Users</div>
+        </div>
+        <div class="cb-tags">
+          <span class="tag" style="background:rgba(217,119,6,0.1);color:#d97706">Show Tag/U +2.1%</span>
+          <span class="tag" style="background:rgba(217,119,6,0.1);color:#d97706">UCB 原则</span>
+          <span class="tag" style="background:rgba(217,119,6,0.1);color:#d97706">不确定性 = 机会</span>
+        </div>
+      </div>
+      <div class="cb-body">
+        <p class="cb-lead">高活跃用户（HAU，月活 ≥ 7 天）拥有丰富交互历史，模型对其预测通常较可靠，但系统存在"越推越窄"的马太效应。本策略将贡献一的不确定性信号<strong style="color:#d97706">反转为探索驱动力</strong>——越不确定，越值得探索。</p>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#d97706">▍理论基础：UCB 原则与探索-利用权衡</div>
+          <p class="deriv-text">UCB（Upper Confidence Bound）来自多臂老虎机（Multi-armed Bandit）理论。经典 UCB1 算法对每个臂的打分为：</p>
+          <div class="math-block">
+            UCB<sub>t</sub>(a) = X̄<sub>a</sub> + √(2 ln t / n<sub>a</sub>)
+          </div>
+          <p class="deriv-text">其中 X̄<sub>a</sub> 为当前估计均值（利用），√(2 ln t / n<sub>a</sub>) 为置信区间半宽（探索奖励）。对观察次数少（n<sub>a</sub> 小）的臂，探索奖励大，鼓励优先尝试。</p>
+          <p class="deriv-text">本文将此原则迁移至推荐排序：<strong style="color:#d97706">认知不确定性高的 item</strong> 对应"模型尚未充分理解用户对此内容的偏好"，类比 n<sub>a</sub> 小的臂，应给予探索加分。</p>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#d97706">▍HAU 不确定性聚合与排序加分</div>
+          <p class="deriv-text">对 HAU，将两类不确定性取最大值作为探索信号（保守取上界，确保任一维度的探索机会均被捕获）：</p>
+          <div class="math-block math-highlight">
+            U<sub>HAU</sub>(x<sub>u,i</sub>) = max(U<sub>point</sub>(x<sub>u,i</sub>), U<sub>prob</sub>(x<sub>u,i</sub>))
+          </div>
+          <p class="deriv-text">最终排序分加入探索奖励：</p>
+          <div class="math-block math-highlight">
+            r<sup>final</sup><sub>u,i</sub> = r<sub>u,i</sub> + ω · U<sub>HAU</sub>(x<sub>u,i</sub>)
+          </div>
+          <p class="deriv-text">其中 ω &gt; 0 为探索权重，通过 A/B 实验调节，平衡短期满意度与长期多样性。</p>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#d97706">▍认知不确定性 vs 随机不确定性：为什么只用认知部分？</div>
+          <div class="intuition-box" style="border-color:rgba(245,158,11,0.3)">
+            <div class="intuition-row">
+              <div class="intuition-icon">🧠</div>
+              <div><strong style="color:#d97706">认知不确定性高</strong>：模型对该用户-内容对学习不充分 → 探索价值高，推荐后可以收集反馈、改善模型 → 应该加分</div>
+            </div>
+            <div class="intuition-row">
+              <div class="intuition-icon">🎲</div>
+              <div><strong style="color:#94a3b8">随机不确定性高</strong>：用户行为本身随机波动大 → 即使推荐了，收集到的反馈信噪比低，对模型提升有限 → 不应作为探索依据</div>
+            </div>
+          </div>
+          <p class="deriv-text">这也是为什么对概率性模型，本文专门通过全变差分解剥离出认知部分 U<sub>prob</sub>，而非直接使用总预测方差。</p>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#d97706">▍A/B 实验结果</div>
+          <div class="result-table">
+            <div class="rt-row rt-header">
+              <div class="rt-cell">指标</div><div class="rt-cell">含义</div><div class="rt-cell">结果</div>
+            </div>
+            <div class="rt-row">
+              <div class="rt-cell" style="color:#d97706;font-weight:700">Show Tag/U</div>
+              <div class="rt-cell">每用户平均暴露的内容品类标签数，衡量推荐宽度</div>
+              <div class="rt-cell good-val">+2.1%</div>
+            </div>
+            <div class="rt-row">
+              <div class="rt-cell" style="color:#d97706;font-weight:700">Top1 Tag UV Ratio ↓</div>
+              <div class="rt-cell">主力兴趣占比 &gt; 80% 的用户比例（降低 = 兴趣更均衡）</div>
+              <div class="rt-cell good-val">−0.42%</div>
+            </div>
+            <div class="rt-row">
+              <div class="rt-cell" style="color:#94a3b8">Live Watch Time</div>
+              <div class="rt-cell">总观看时长（无损验证）</div>
+              <div class="rt-cell" style="color:#94a3b8">+0.16%†</div>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--text-dim);margin-top:8px">† 统计不显著（p &gt; 0.05）。兴趣多样性显著提升，engagement 未受损，验证了策略的有效性。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         end of ②-B, close contrib section
+    ══════════════════════════════════════════ -->
+
+  </div><!-- /section TWO CONTRIBUTIONS -->
+
+  <!-- EMPIRICAL VALIDATION - independent section -->
+  <div id="sec-validation" class="section reveal">
+    <div class="section-title">
+      <div class="icon" style="background:rgba(6,182,212,0.15)">🔬</div>
+      大规模工业验证与消融分析
+    </div>
+    <p style="color:var(--text-muted);font-size:14px;margin:-8px 0 24px">论文在字节跳动直播平台的真实生产流量上进行了为期 14 天的 A/B 实验，并设计了 5 组消融变体，严格区分"不确定性量化质量"与"排序策略本身"对结果的贡献。</p>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 32px">
+      <div class="cb-body">
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#0891b2">▍离线验证：不确定性估计质量评估</div>
+          <p class="deriv-text">由于认知不确定性没有 ground truth，论文采用三类间接评估指标，从不同角度验证"不确定性分值是否真的能区分高风险样本"：</p>
+          <div class="step-list">
+
+            <!-- AURC -->
+            <div class="step-item">
+              <div class="step-num" style="background:rgba(79,70,229,0.1);color:#4f46e5">AURC</div>
+              <div class="step-content">
+                <strong>Area Under Risk-Coverage Curve（风险-覆盖曲线下面积）</strong>
+                <div class="deriv-box" style="margin:10px 0">
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">直觉</div>
+                    <div class="deriv-formula">对测试集按不确定性从高到低排序，逐步"拒绝"高不确定性样本，观察剩余样本的平均预测误差如何变化。如果不确定性分值有效，拒绝高分样本后误差应快速下降。</div>
+                  </div>
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">含义</div>
+                    <div class="deriv-formula">AURC = 拒绝曲线下面积。越低越好——说明模型能精准识别高风险样本，少量过滤即可大幅降低误差。</div>
+                  </div>
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">本文结果</div>
+                    <div class="deriv-formula">EPE Critic <strong style="color:#4f46e5">0.0157</strong> &lt; MC Dropout 0.0219 &lt; Multi-head 0.0241（越低越好）</div>
+                  </div>
+                </div>
+                <span class="note">类比：AURC 之于不确定性，相当于 AUC 之于分类——衡量"排序质量"而非绝对值。</span>
+              </div>
+            </div>
+
+            <!-- Spearman -->
+            <div class="step-item">
+              <div class="step-num" style="background:rgba(8,145,178,0.1);color:#0891b2">Spearman</div>
+              <div class="step-content">
+                <strong>Spearman 秩相关系数（ρ）</strong>
+                <div class="deriv-box" style="margin:10px 0">
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">直觉</div>
+                    <div class="deriv-formula">理想的不确定性估计应与实际预测误差"单调一致"——不确定性高的样本，真实误差也应更大。Spearman ρ 衡量这种排序一致性，不要求线性关系。</div>
+                  </div>
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">含义</div>
+                    <div class="deriv-formula">ρ ∈ [-1, 1]，越接近 1 说明不确定性分值与误差的排序越吻合。ρ ≈ 0 意味着随机，ρ &lt; 0 反向。</div>
+                  </div>
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">本文结果</div>
+                    <div class="deriv-formula">本文方法 <strong style="color:#0891b2">&gt; 0.65</strong>；Multi-head Ensemble 0.276；MC Dropout 0.189（越高越好）</div>
+                  </div>
+                </div>
+                <span class="note">0.65 vs 0.189 的差距说明本文不确定性分值与真实误差的排序一致性远超 baseline，是 Deboosting/UCB 策略能奏效的直接依据。</span>
+              </div>
+            </div>
+
+            <!-- 趋势对齐 -->
+            <div class="step-item">
+              <div class="step-num" style="background:rgba(5,150,105,0.1);color:#059669">趋势对齐</div>
+              <div class="step-content">
+                <strong>直播流年龄验证（Sanity Check by Stream Age）</strong>
+                <div class="deriv-box" style="margin:10px 0">
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">直觉</div>
+                    <div class="deriv-formula">刚开播的直播（历史交互 = 0）模型几乎没有任何信息，不确定性应最高；随着直播持续、积累互动，模型逐渐"了解"该直播，不确定性应单调下降。这是先验可验证的物理约束。</div>
+                  </div>
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">验证方式</div>
+                    <div class="deriv-formula">按直播时长（stream age）分桶，对每桶计算平均 U<sub>point</sub> / U<sub>prob</sub>，检验是否与直播年龄呈负相关，且走势与在线 RMSE 曲线高度一致。</div>
+                  </div>
+                  <div class="deriv-row">
+                    <div class="deriv-label" style="font-size:11px">本文结果</div>
+                    <div class="deriv-formula">两类不确定性均通过验证：stream age 越大，U<sub>point</sub> / U<sub>prob</sub> 越低，趋势与在线 RMSE 高度吻合。</div>
+                  </div>
+                </div>
+                <span class="note">这一指标是"领域知识 + 数据"的交叉验证，能排除"不确定性分值偶然高但无实际意义"的情况，增强工程可信度。</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#0891b2">▍消融实验设计与结果（LAU，HLT7 指标）</div>
+          <div class="bar-chart" style="margin-top:16px">
+            <div class="bar-row">
+              <div class="bar-label" style="width:200px">① EPE + Bayes（完整框架）</div>
+              <div class="bar-track"><div class="bar-fill bar-best" style="width:100%">+0.0577%</div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:200px">② 仅 Bayes 先验方差</div>
+              <div class="bar-track"><div class="bar-fill bar-good" style="width:81%">+0.0468%</div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:200px">③ 仅 EPE Critic</div>
+              <div class="bar-track"><div class="bar-fill bar-good" style="width:75%">+0.0434%</div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:200px">④ MC Dropout</div>
+              <div class="bar-track"><div class="bar-fill bar-ok" style="width:62%">+0.0360%†</div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:200px">⑤ Multi-head Ensemble</div>
+              <div class="bar-track"><div class="bar-fill bar-weak" style="width:33%">+0.0188%†</div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:200px">⑥ Random Baseline</div>
+              <div class="bar-track"><div class="bar-fill bar-rand" style="width:5%">+0.0029%†</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#0891b2">▍关键推论：Random Baseline 是"验伪"实验</div>
+          <p class="deriv-text">论文专门设计了一组 Random Baseline——用均匀随机分值替代学习到的不确定性，执行同样的 deboosting/boost 操作。结果：</p>
+          <div class="intuition-box" style="border-color:rgba(6,182,212,0.25)">
+            <div class="intuition-row">
+              <div class="intuition-icon">🎲</div>
+              <div>HLT7 ≈ +0.003%（不显著），VWR = −0.017%，Show Tag/U = +0.16% → <strong style="color:#0891b2">几乎无正向效果</strong></div>
+            </div>
+            <div class="intuition-row">
+              <div class="intuition-icon">✅</div>
+              <div>结论：提升来自<strong style="color:#0891b2">有效的不确定性量化</strong>，而非"降分/加分"这个操作本身。这排除了"任意过滤都有效"的混淆假设。</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="deriv-section">
+          <div class="deriv-title" style="color:#0891b2">▍EPE 与 Bayes 互补性分析</div>
+          <div class="compare-grid" style="grid-template-columns:1fr 1fr">
+            <div class="compare-item good" style="border-color:rgba(79,70,229,0.3)">
+              <div class="compare-method" style="color:#4f46e5">EPE Critic 的优势</div>
+              <div class="compare-desc">直接拟合历史泛化误差，对<strong>即时风险规避</strong>（VWR）更有效。能捕获在线 serving 的系统性偏差（特征 staleness、延迟等）。</div>
+            </div>
+            <div class="compare-item good" style="border-color:rgba(6,182,212,0.3)">
+              <div class="compare-method" style="color:#0891b2">Bayes 先验方差的优势</div>
+              <div class="compare-desc">来自参数先验分布，对<strong>兴趣探索</strong>（Show Tag/U）更稳定。仅靠 Bayes，HAU Show Tag/U 已达 +0.9%，比 EPE 单独的 +1.0% 接近。</div>
+            </div>
+          </div>
+          <p class="deriv-text" style="margin-top:14px">两者联合使用，在 HLT7（+0.0577% vs +0.0434%/+0.0468%）和 Show Tag/U（+2.1% vs +1.0%/+0.9%）上均超过任一单独使用，验证了两种信号的正交互补性。</p>
+        </div>
+
+      </div>
+    </div><!-- /card -->
+  </div><!-- /section EMPIRICAL VALIDATION -->
+
+  <!-- COMPARISON TABLE -->
+  <div id="sec-compare" class="section reveal">
+    <div class="section-title">
+      <div class="icon" style="background:rgba(16,185,129,0.15)">📊</div>
+      方法对比：为什么 MC Dropout / Multi-head 不够用？
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>方法</th>
+            <th>推理延迟</th>
+            <th>粒度</th>
+            <th>Spearman ↑</th>
+            <th>AURC ↓</th>
+            <th>HLT7 提升</th>
+            <th>VWR 提升</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="highlight-row">
+            <td><span class="row-tag">本文</span> EPE + Bayes</td>
+            <td class="best">单次推理</td>
+            <td class="best">per (user, item)</td>
+            <td class="best">&gt;0.65</td>
+            <td class="best">0.016</td>
+            <td class="best">+0.058%</td>
+            <td class="best">+0.512%</td>
+          </tr>
+          <tr>
+            <td>MC Dropout</td>
+            <td style="color:#d97706">10× 前向推理</td>
+            <td>per instance</td>
+            <td>0.189</td>
+            <td>0.022</td>
+            <td>+0.036%†</td>
+            <td>+0.25%</td>
+          </tr>
+          <tr>
+            <td>Multi-head Ensemble</td>
+            <td>单次</td>
+            <td style="color:#d97706">共享表征（退化）</td>
+            <td style="color:#ef4444">0.276</td>
+            <td>0.021</td>
+            <td>+0.019%†</td>
+            <td>+0.031%</td>
+          </tr>
+          <tr>
+            <td>Conformal Prediction</td>
+            <td>单次</td>
+            <td style="color:#ef4444">全局（one-size-fits-all）</td>
+            <td>—</td>
+            <td>—</td>
+            <td>无排序区分度</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Random Baseline</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>+0.003%†</td>
+            <td>-0.017%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px;font-size:13px;color:var(--text-dim)">† 统计不显著 (p > 0.05)。Multi-head 因"表征坍塌"（representation collapse）导致头间方差近乎为零，无法区分实例级风险。</p>
+  </div>
+
+  <!-- LIMITATIONS -->
+  <div id="sec-limits" class="section reveal">
+    <div class="section-title">
+      <div class="icon" style="background:rgba(239,68,68,0.15)">⚠️</div>
+      局限性与不足（论文自陈）
+    </div>
+    <div class="limit-list">
+      <div class="limit-item">
+        <div class="limit-icon">🔄</div>
+        <div>
+          <h4>依赖稳定的日训练管线</h4>
+          <p>EPE 的监督信号需要每日 checkpoint 对比，若训练管线不稳定或节奏不规律，EPE 样本质量会下降。</p>
+        </div>
+      </div>
+      <div class="limit-item">
+        <div class="limit-icon">📐</div>
+        <div>
+          <h4>Beta 先验可能过于简化</h4>
+          <p>对于复杂多模态行为（如同时看视频、直播、购物的用户），Beta 分布先验可能不足以刻画真实的行为分布。</p>
+        </div>
+      </div>
+      <div class="limit-item">
+        <div class="limit-icon">🎯</div>
+        <div>
+          <h4>认知不确定性无 Ground Truth</h4>
+          <p>评估只能间接进行（通过观察在线 MSE 的相关性），无法直接度量"真实的认知不确定性"。</p>
+        </div>
+      </div>
+      <div class="limit-item">
+        <div class="limit-icon">⚖️</div>
+        <div>
+          <h4>Deboosting 的长期权衡</h4>
+          <p>压制高不确定性内容保护了短期体验，但同时减少了系统学习这些内容的机会，可能影响长期的模型迭代速度。</p>
+        </div>
+      </div>
+      <div class="limit-item">
+        <div class="limit-icon">👥</div>
+        <div>
+          <h4>LAU 内部异质性未细分</h4>
+          <p>LAU 群体内部差异巨大（极端冷启动 vs. 轻度流失用户），当前框架未进行更细粒度的差异化处理。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FUTURE WORK -->
+  <div class="section reveal">
+    <div class="section-title">
+      <div class="icon" style="background:rgba(245,158,11,0.15)">🔭</div>
+      未来研究方向
+    </div>
+    <div class="future-grid">
+      <div class="future-item">
+        <div class="emoji">🕸️</div>
+        <h4>GNN / Transformer 贝叶斯神经网络</h4>
+        <p>捕获更复杂的用户-内容交互关系</p>
+      </div>
+      <div class="future-item">
+        <div class="emoji">🔗</div>
+        <h4>EPE + Bayes 更紧密耦合</h4>
+        <p>端到端联合训练两个不确定性头</p>
+      </div>
+      <div class="future-item">
+        <div class="emoji">🤖</div>
+        <h4>RL 自适应降分调度</h4>
+        <p>用强化学习动态调整 deboosting 强度</p>
+      </div>
+      <div class="future-item">
+        <div class="emoji">🗣️</div>
+        <h4>LLM 语义感知不确定性</h4>
+        <p>提供可解释的探索原因，增强用户信任</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCLUSION -->
+  <div class="section reveal">
+    <div class="conclusion-box">
+      <h2>🎯 一句话总结</h2>
+      <p>
+        这篇 <span class="highlight">KDD '26</span> 论文（字节跳动 + Stanford）首次在工业规模上提出
+        "<span class="highlight2">不确定性对低活用户是风险，对高活用户是机会</span>"这一对偶策略，
+        通过 <span class="highlight">EPE Critic + Empirical Bayes</span> 的统一框架实现低延迟、
+        细粒度的不确定性量化，并以 14 天严格 A/B 实验证明了其在
+        <span class="highlight2">用户留存（+0.057%）</span>、
+        <span class="highlight2">观看质量（+0.512%）</span> 和
+        <span class="highlight3">内容多样性（+2.1%）</span>上的双重业务价值。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  论文解读生成 · <a href="https://arxiv.org/abs/2605.17788" target="_blank">arxiv:2605.17788</a> ·
+  KDD '26 · DOI: 10.1145/3770855.3818501
+</div>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('revealed');
+      }
+    });
+  }, { threshold: 0.08 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Animate bars on scroll
+  const barObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.querySelectorAll('.bar-fill').forEach(bar => {
+          const w = bar.style.width;
+          bar.style.width = '0';
+          setTimeout(() => { bar.style.width = w; }, 100);
+        });
+      }
+    });
+  }, { threshold: 0.3 });
+
+  document.querySelectorAll('.bar-chart').forEach(el => barObserver.observe(el));
+
+  // TOC active link highlight on scroll
+  const tocLinks = document.querySelectorAll('.toc-sidebar a[href^="#"]');
+  const sections = Array.from(tocLinks).map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const tocObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = '#' + entry.target.id;
+        tocLinks.forEach(a => {
+          a.classList.toggle('toc-active', a.getAttribute('href') === id);
+        });
+      }
+    });
+  }, { rootMargin: '-10% 0px -80% 0px' });
+  sections.forEach(s => tocObserver.observe(s));
+</script>
+</body>
+</html>
